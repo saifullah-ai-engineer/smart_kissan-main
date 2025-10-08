@@ -7,14 +7,11 @@ import {
   Play, 
   Pause, 
   Download, 
-  Globe, 
-  Wifi, 
-  WifiOff,
+  Globe,
   Bot,
   User,
   Leaf
 } from 'lucide-react'
-import { webhookService, type WebhookPayload } from '../services/webhookService'
 
 interface Message {
   id: string
@@ -33,15 +30,10 @@ interface Message {
   }
 }
 
-interface SmartKissanChatProps {
-  onBack: () => void
-}
-
-export default function SmartKissanChat({ onBack }: SmartKissanChatProps) {
+export default function AgriMindChat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [inputText, setInputText] = useState('')
   const [isRecording, setIsRecording] = useState(false)
-  const [isOffline, setIsOffline] = useState(false)
   const [language, setLanguage] = useState<'en' | 'ur'>('en')
   const [isLoading, setIsLoading] = useState(false)
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null)
@@ -102,40 +94,8 @@ export default function SmartKissanChat({ onBack }: SmartKissanChatProps) {
     setInputText('')
     setIsLoading(true)
 
-    try {
-      // Send to N8N webhook
-      const webhookPayload: WebhookPayload = {
-        type,
-        content: text,
-        language,
-        farmerName: 'Smart Kissan User',
-        crop: 'General',
-        query: text,
-        ...(image && { image }),
-        ...(type === 'image+speech' && { speech_text: text })
-      }
-
-      const response = await webhookService.sendToWebhook(webhookPayload)
-      
-      const smartkissanMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'smartkissan',
-        content: response.success 
-          ? (response.n8nResponse || response.message)
-          : `Error: ${response.error || response.message}`,
-        timestamp: new Date(),
-        analysis: response.success ? {
-          recommendations: ['Response received from N8N webhook'],
-          weather: 'Data processed through Smart Kissan AI pipeline',
-          irrigation: 'N8N webhook integration active'
-        } : undefined
-      }
-
-      setMessages(prev => [...prev, smartkissanMessage])
-    } catch (error) {
-      console.error('API call failed:', error)
-      
-      // Fallback to mock data in offline mode
+    // Simulate AI processing delay
+    setTimeout(() => {
       const mockResponse = getMockResponse(text, type, image)
       const smartkissanMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -146,9 +106,8 @@ export default function SmartKissanChat({ onBack }: SmartKissanChatProps) {
       }
 
       setMessages(prev => [...prev, smartkissanMessage])
-    } finally {
       setIsLoading(false)
-    }
+    }, 1500)
   }
 
   const getMockResponse = (text: string, type: string, image?: string) => {
@@ -392,17 +351,6 @@ export default function SmartKissanChat({ onBack }: SmartKissanChatProps) {
                 <span>{language === 'en' ? 'EN' : 'اردو'}</span>
               </button>
               
-              <button
-                onClick={() => setIsOffline(!isOffline)}
-                className={`flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium transition-colors duration-200 ${
-                  isOffline 
-                    ? 'bg-red-100 text-red-700 hover:bg-red-200' 
-                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                }`}
-              >
-                {isOffline ? <WifiOff className="w-4 h-4" /> : <Wifi className="w-4 h-4" />}
-                <span>{isOffline ? 'Offline' : 'Online'}</span>
-              </button>
 
               <button
                 onClick={downloadReport}

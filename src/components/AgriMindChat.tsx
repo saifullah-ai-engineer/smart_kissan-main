@@ -104,13 +104,18 @@ export default function AgriMindChat() {
         type: type,
         language: language,
         image: image,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        sessionId: `session_${Date.now()}` // Add unique session ID to prevent caching
       }
+
+      console.log('Sending to webhook:', payload)
 
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         },
         body: JSON.stringify(payload)
       })
@@ -120,16 +125,50 @@ export default function AgriMindChat() {
       }
 
       const result = await response.json()
+      console.log('Webhook response:', result)
+      
+      // Handle different response formats from N8N
+      let responseText = ''
+      let recommendations = []
+      let weather = ''
+      let irrigation = ''
+
+      if (typeof result === 'string') {
+        responseText = result
+      } else if (result.message) {
+        responseText = result.message
+      } else if (result.response) {
+        responseText = result.response
+      } else if (result.text) {
+        responseText = result.text
+      } else if (result.data && result.data.message) {
+        responseText = result.data.message
+      } else if (result.output) {
+        responseText = result.output
+      } else {
+        responseText = JSON.stringify(result)
+      }
+
+      // Extract additional data if available
+      if (result.recommendations) {
+        recommendations = Array.isArray(result.recommendations) ? result.recommendations : [result.recommendations]
+      }
+      if (result.weather) {
+        weather = result.weather
+      }
+      if (result.irrigation) {
+        irrigation = result.irrigation
+      }
       
       const smartkissanMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'smartkissan',
-        content: result.message || result.response || 'AI response received',
+        content: responseText || 'AI response received',
         timestamp: new Date(),
         analysis: {
-          recommendations: result.recommendations || ['Response from Smart Kissan AI'],
-          weather: result.weather || 'Weather data processed',
-          irrigation: result.irrigation || 'Irrigation advice provided'
+          recommendations: recommendations.length > 0 ? recommendations : ['Response from Smart Kissan AI'],
+          weather: weather || 'Weather data processed',
+          irrigation: irrigation || 'Irrigation advice provided'
         }
       }
 
@@ -374,6 +413,40 @@ export default function AgriMindChat() {
     setLanguage(prev => prev === 'en' ? 'ur' : 'en')
   }
 
+  const testWebhook = async () => {
+    try {
+      const webhookUrl = 'https://hackathonuuu.app.n8n.cloud/webhook/05b39f52-ffcc-465b-b91d-597af9596caf/chat'
+      const testPayload = {
+        message: 'Test message from Smart Kissan',
+        type: 'text',
+        language: 'en',
+        timestamp: new Date().toISOString(),
+        sessionId: `test_${Date.now()}`
+      }
+
+      console.log('Testing webhook with payload:', testPayload)
+      
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        body: JSON.stringify(testPayload)
+      })
+
+      console.log('Webhook test response status:', response.status)
+      const result = await response.text()
+      console.log('Webhook test response:', result)
+      
+      alert(`Webhook Test Result:\nStatus: ${response.status}\nResponse: ${result}`)
+    } catch (error) {
+      console.error('Webhook test failed:', error)
+      alert(`Webhook Test Failed: ${error.message}`)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -405,6 +478,14 @@ export default function AgriMindChat() {
               >
                 <Globe className="w-4 h-4" />
                 <span>{language === 'en' ? 'EN' : 'اردو'}</span>
+              </button>
+
+              <button
+                onClick={testWebhook}
+                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium hover:bg-blue-200 transition-colors duration-200"
+                title="Test Webhook Connection"
+              >
+                Test Webhook
               </button>
 
               <button

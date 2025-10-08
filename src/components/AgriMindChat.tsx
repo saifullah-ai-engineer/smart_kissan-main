@@ -41,7 +41,7 @@ export default function AgriMindChat() {
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const recognitionRef = useRef<any>(null)
   const synthRef = useRef<SpeechSynthesis | null>(null)
 
   useEffect(() => {
@@ -194,7 +194,7 @@ export default function AgriMindChat() {
     }
   }
 
-  const getMockResponse = (text: string, type: string, image?: string) => {
+  const getMockResponse = (text: string, _type: string, image?: string) => {
     const mockResponses = {
       en: {
         disease: {
@@ -269,13 +269,13 @@ export default function AgriMindChat() {
       setIsRecording(true)
       recognitionRef.current.start()
       
-      recognitionRef.current.onresult = (event) => {
+      recognitionRef.current.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript
         setInputText(transcript)
         setIsRecording(false)
       }
 
-      recognitionRef.current.onerror = () => {
+      recognitionRef.current.onerror = (_event: any) => {
         setIsRecording(false)
       }
 
@@ -303,13 +303,13 @@ export default function AgriMindChat() {
           setIsRecording(true)
           recognitionRef.current.start()
           
-          recognitionRef.current.onresult = (event) => {
+          recognitionRef.current.onresult = (event: any) => {
             const transcript = event.results[0][0].transcript
             handleSendMessage(transcript, 'image+speech', base64Image)
             setIsRecording(false)
           }
 
-          recognitionRef.current.onerror = () => {
+          recognitionRef.current.onerror = (_event: any) => {
             // Send image without speech if speech recognition fails
             handleSendMessage('Image uploaded for analysis', 'image+speech', base64Image)
             setIsRecording(false)
@@ -441,7 +441,7 @@ export default function AgriMindChat() {
       console.log('Webhook test response:', result)
       
       alert(`Webhook Test Result:\nStatus: ${response.status}\nResponse: ${result}`)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Webhook test failed:', error)
       alert(`Webhook Test Failed: ${error.message}`)
     }

@@ -37,6 +37,7 @@ export default function AgriMindChat() {
   const [language, setLanguage] = useState<'en' | 'ur'>('en')
   const [isLoading, setIsLoading] = useState(false)
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null)
+  const [webhookConnected, setWebhookConnected] = useState(false)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -94,8 +95,51 @@ export default function AgriMindChat() {
     setInputText('')
     setIsLoading(true)
 
-    // Simulate AI processing delay
-    setTimeout(() => {
+    try {
+      // Send to N8N webhook
+      const webhookUrl = 'https://hackathonuuu.app.n8n.cloud/webhook/05b39f52-ffcc-465b-b91d-597af9596caf/chat'
+      
+      const payload = {
+        message: text,
+        type: type,
+        language: language,
+        image: image,
+        timestamp: new Date().toISOString()
+      }
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) {
+        throw new Error(`Webhook request failed: ${response.status} ${response.statusText}`)
+      }
+
+      const result = await response.json()
+      
+      const smartkissanMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'smartkissan',
+        content: result.message || result.response || 'AI response received',
+        timestamp: new Date(),
+        analysis: {
+          recommendations: result.recommendations || ['Response from Smart Kissan AI'],
+          weather: result.weather || 'Weather data processed',
+          irrigation: result.irrigation || 'Irrigation advice provided'
+        }
+      }
+
+      setMessages(prev => [...prev, smartkissanMessage])
+      setWebhookConnected(true)
+    } catch (error) {
+      console.error('Webhook call failed:', error)
+      setWebhookConnected(false)
+      
+      // Fallback to mock data if webhook fails
       const mockResponse = getMockResponse(text, type, image)
       const smartkissanMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -106,8 +150,9 @@ export default function AgriMindChat() {
       }
 
       setMessages(prev => [...prev, smartkissanMessage])
+    } finally {
       setIsLoading(false)
-    }, 1500)
+    }
   }
 
   const getMockResponse = (text: string, type: string, image?: string) => {
@@ -343,6 +388,17 @@ export default function AgriMindChat() {
             </div>
             
             <div className="flex items-center space-x-3">
+              <div className={`flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${
+                webhookConnected 
+                  ? 'bg-green-100 text-green-700' 
+                  : 'bg-yellow-100 text-yellow-700'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${
+                  webhookConnected ? 'bg-green-500' : 'bg-yellow-500'
+                }`}></div>
+                <span>{webhookConnected ? 'AI Connected' : 'Offline Mode'}</span>
+              </div>
+
               <button
                 onClick={toggleLanguage}
                 className="flex items-center space-x-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium hover:bg-green-200 transition-colors duration-200"
@@ -350,7 +406,6 @@ export default function AgriMindChat() {
                 <Globe className="w-4 h-4" />
                 <span>{language === 'en' ? 'EN' : 'اردو'}</span>
               </button>
-              
 
               <button
                 onClick={downloadReport}
